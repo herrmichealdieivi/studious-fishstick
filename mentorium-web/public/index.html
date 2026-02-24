@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentorium Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Translations
+        const translations = {
+            en: {
+                forum: "The Forum",
+                houses: "Houses", 
+                trials: "Trials",
+                seal: "Seal",
+                standingIn: "You are within the House of Euler",
+                nextThreshold: "Next Threshold",
+                doorNum: "Door XII",
+                lessonTitle: "Quadratic Equations",
+                lessonDesc: "Foundations in algebraic reasoning and symbolic manipulation",
+                enterDoor: "Enter Door",
+                standingInLabel: "Standing In",
+                houseOfEuler: "House of Euler",
+                mathematics: "Mathematics",
+                doorsOpened: "Doors Opened",
+                doorsCount: "Eleven of twenty-four",
+                trialPerformance: "Trial Performance",
+                pastDays: "Past seven days",
+                thisWeek: "+12 this week",
+                quote: "Mathematics is not about numbers, equations, or algorithms—it is about understanding.",
+                quoteAuthor: "— William Thurston",
+                navForum: "Forum",
+                navHouses: "Houses",
+                navTrials: "Trials", 
+                navSeal: "Seal",
+                languageSettings: "Language",
+                english: "English",
+                arabic: "العربية",
+                userName: "Michael",
+                housesTitle: "Mathematical Houses",
+                eulerHouse: "Euler House",
+                gaussHouse: "Gauss House",
+                noetherHouse: "Noether House",
+                riemannHouse: "Riemann House",
+                housesDescription: "Explore the great houses of mathematical thought",
+                trialsTitle: "Active Trials",
+                trial1: "Algebra Fundamentals",
+                trial2: "Geometric Proofs", 
+                trial3: "Calculus Basics",
+                trialProgress: "Progress",
+                trialStatus: "In Progress"
+            },
+            ar: {
+                forum: "الساحة",
+                houses: "البيوت",
+                trials: "التجارب", 
+                seal: "الختم",
+                standingIn: "أنت في بيت أويلر",
+                nextThreshold: "العتبة التالية",
+                doorNum: "الباب الثاني عشر",
+                lessonTitle: "المعادلات التربيعية",
+                lessonDesc: "أسس التفكير الجبري والمعالجة الرمزية",
+                enterDoor: "ادخل الباب",
+                standingInLabel: "موقفك",
+                houseOfEuler: "بيت أويلر",
+                mathematics: "الرياضيات",
+                doorsOpened: "الأبواب المفتوحة",
+                doorsCount: "أحد عشر من أربعة وعشرين",
+                trialPerformance: "أداء التجارب",
+                pastDays: "السبعة أيام الماضية",
+                thisWeek: "+١٢ هذا الأسبوع",
+                quote: "الرياضيات ليست عن الأرقام أو المعادلات أو الخوارزميات — بل عن الفهم.",
+                quoteAuthor: "— ويليام ثورستون",
+                navForum: "الساحة",
+                navHouses: "البيوت",
+                navTrials: "التجارب",
+                navSeal: "الختم", 
+                languageSettings: "اللغة",
+                english: "English",
+                arabic: "العربية",
+                userName: "مايكل",
+                housesTitle: "بيوت الرياضيات",
+                eulerHouse: "بيت أويلر",
+                gaussHouse: "بيت غاوس",
+                noetherHouse: "بيت نويثر", 
+                riemannHouse: "بيت ريمان",
+                housesDescription: "استكشف البيوت العظيمة للفكر الرياضي",
+                trialsTitle: "التجارب النشطة",
+                trial1: "أساسيات الجبر",
+                trial2: "براهين هندسية",
+                trial3: "مبادئ التفاضل والتكامل",
+                trialProgress: "التقدم",
+                trialStatus: "قيد التنفيذ"
+            }
+        };
+
+        // Icons
+        const GateIcon = () => (
+            React.createElement('svg', {className: "w-6 h-6", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"},
+                React.createElement('path', {d: "M4 20V10L12 4L20 10V20", strokeLinecap: "round", strokeLinejoin: "round"}),
+                React.createElement('path', {d: "M9 20V14H15V20", strokeLinecap: "round", strokeLinejoin: "round"})
+            )
+        );
+
+        const ScaleIcon = () => (
+            React.createElement('svg', {className: "w-6 h-6", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"},
+                React.createElement('path', {d: "M12 3V21M7 8L12 3L17 8M7 8L5 13H9L7 8ZM17 8L19 13H15L17 8Z", strokeLinecap: "round", strokeLinejoin: "round"})
+            )
+        );
+
+        const SealIcon = () => (
+            React.createElement('svg', {className: "w-6 h-6", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"},
+                React.createElement('circle', {cx: "12", cy: "12", r: "9"}),
+                React.createElement('circle', {cx: "12", cy: "12", r: "3", fill: "currentColor"})
+            )
+        );
+
+        const ForumIcon = () => (
+            React.createElement('svg', {className: "w-6 h-6", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"},
+                React.createElement('rect', {x: "3", y: "10", width: "18", height: "11", strokeLinecap: "round", strokeLinejoin: "round"}),
+                React.createElement('path', {d: "M7 10V6M12 10V6M17 10V6", strokeLinecap: "round"})
+            )
+        );
+
+        // Navigation Component
+        const Navigation = ({ activeTab, setActiveTab, text, isRTL }) => (
+            React.createElement('div', {className: "fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-neutral-200"},
+                React.createElement('div', {className: "grid grid-cols-4"},
+                    ['forum', 'houses', 'trials', 'seal'].map(tab => {
+                        const icons = { forum: ForumIcon, houses: GateIcon, trials: ScaleIcon, seal: SealIcon };
+                        const Icon = icons[tab];
+                        return React.createElement('button', {
+                            key: tab,
+                            onClick: () => setActiveTab(tab),
+                            className: `flex flex-col items-center py-3 px-2 transition-colors ${
+                                activeTab === tab 
+                                    ? 'text-neutral-900 bg-neutral-100' 
+                                    : 'text-neutral-500 hover:text-neutral-700'
+                            }`
+                        },
+                            React.createElement(Icon),
+                            React.createElement('span', {className: "text-xs mt-1 font-medium"}, text[`nav${tab.charAt(0).toUpperCase() + tab.slice(1)}`])
+                        );
+                    })
+                )
+            )
+        );
+
+        // Forum Component
+        const Forum = ({ text, isRTL, language }) => (
+            React.createElement('div', {className: `flex-1 overflow-y-auto pb-20 ${isRTL ? 'rtl' : 'ltr'}`},
+                React.createElement('div', {className: "bg-white px-6 pt-8 pb-5 border-b border-neutral-200"},
+                    React.createElement('div', {className: `flex items-start justify-between mb-3 ${isRTL ? 'flex-row-reverse' : ''}`},
+                        React.createElement('div', {className: isRTL ? 'text-right' : ''},
+                            React.createElement('p', {className: "text-xs font-medium text-neutral-500 uppercase tracking-wider"}, text.forum),
+                            React.createElement('h1', {className: "text-2xl font-semibold text-neutral-900 mt-1"}, text.userName)
+                        ),
+                        React.createElement('div', {className: "relative w-14 h-14"},
+                            React.createElement('svg', {className: "w-14 h-14 transform -rotate-90"},
+                                React.createElement('circle', {cx: "28", cy: "28", r: "24", stroke: "#e5e5e5", strokeWidth: "3", fill: "none"}),
+                                React.createElement('circle', {
+                                    cx: "28", cy: "28", r: "24", stroke: "#1a1a1a", strokeWidth: "3", fill: "none",
+                                    strokeDasharray: `${2 * Math.PI * 24}`,
+                                    strokeDashoffset: `${2 * Math.PI * 24 * (1 - 0.73)}`,
+                                    strokeLinecap: "square"
+                                })
+                            ),
+                            React.createElement('div', {className: "absolute inset-0 flex flex-col items-center justify-center"},
+                                React.createElement('span', {className: "text-xs font-semibold text-neutral-900"}, language === 'ar' ? '٧٣' : '73'),
+                                React.createElement('span', {className: "text-[9px] text-neutral-500"}, "%")
+                            )
+                        )
+                    ),
+                    React.createElement('p', {className: `text-sm text-neutral-600 ${isRTL ? 'text-right' : ''}`}, text.standingIn)
+                )
+            )
+        );
+
+        // Main App
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('forum');
+            const [language, setLanguage] = useState('en');
+            const isRTL = language === 'ar';
+            const text = translations[language];
+
+            const renderActiveTab = () => {
+                switch(activeTab) {
+                    case 'forum': return React.createElement(Forum, { text, isRTL, language });
+                    case 'houses': return React.createElement('div', {className: "flex-1 p-6"}, React.createElement('h1', null, text.housesTitle));
+                    case 'trials': return React.createElement('div', {className: "flex-1 p-6"}, React.createElement('h1', null, text.trialsTitle));
+                    case 'seal': return React.createElement('div', {className: "flex-1 p-6"}, React.createElement('h1', null, text.userName));
+                    default: return React.createElement(Forum, { text, isRTL, language });
+                }
+            };
+
+            return React.createElement('div', {className: `flex flex-col h-screen bg-neutral-50 max-w-md mx-auto ${isRTL ? 'rtl' : 'ltr'} font-sans`},
+                renderActiveTab(),
+                React.createElement(Navigation, { activeTab, setActiveTab, text, isRTL })
+            );
+        };
+
+        // Render
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>

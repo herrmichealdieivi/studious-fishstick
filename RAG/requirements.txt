@@ -1,0 +1,31 @@
+# Video RAG Engine Requirements
+
+# Core ML/AI libraries
+openai-whisper>=20231117
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Video/Audio processing
+opencv-python>=4.8.0
+ffmpeg-python>=0.2.0
+
+# NLP and embeddings
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+
+# Scientific computing
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Temporal Video RAG API
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+
+# Optional but recommended
+# anthropic>=0.18.0  # For Claude API integration
+# openai>=1.0.0      # For OpenAI API integration
+
+# Note: You'll also need ffmpeg installed on your system
+# Ubuntu/Debian: sudo apt-get install ffmpeg
+# macOS: brew install ffmpeg
+# Windows: Download from https://ffmpeg.org/download.html
