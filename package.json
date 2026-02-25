@@ -9,14 +9,16 @@
   ],
   "scripts": {
     "install:all": "npm install",
-    "mobile": "npm run start --workspace=mentorium-app",
+    "mobile": "if [ -f mentorium-app/package.json ]; then npm run start --workspace=mentorium-app; else npm run start --workspace=mentorium-web; fi",
     "web": "npm run web --workspace=mentorium-web",
     "build:mare": "npm run build --workspace=MARE",
     "build:all": "npm run build --workspaces --if-present",
     "test:all": "npm test --workspaces --if-present",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "mobile:web-workspace": "npm run start --workspace=mentorium-web",
+    "compile:app": "npm run build:web:ci --workspace=mentorium-web"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
