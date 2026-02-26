@@ -2,21 +2,19 @@
   "name": "mentorium-monorepo",
   "private": true,
   "workspaces": [
-    "mentorium-app",
     "mentorium-web",
-    "MARE",
     "packages/*"
   ],
   "scripts": {
     "install:all": "npm install",
-    "mobile": "npm run start --workspace=mentorium-app",
     "web": "npm run web --workspace=mentorium-web",
-    "build:mare": "npm run build --workspace=MARE",
     "build:all": "npm run build --workspaces --if-present",
     "test:all": "npm test --workspaces --if-present",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "build:web": "npm run build:web --workspace=mentorium-web",
+    "build": "npm run build:web"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
