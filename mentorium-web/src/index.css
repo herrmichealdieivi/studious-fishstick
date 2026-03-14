@@ -1,20 +1,69 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════
+   Mentorium Theme — CSS Custom Properties
+   ═══════════════════════════════════════════ */
+
+:root,
+[data-theme="light"] {
+    --m-background:      #EDE4D6;
+    --m-card:            #F5F0E8;
+    --m-primaryAccent:   #10443E;
+    --m-secondaryAccent: #32745C;
+    --m-textPrimary:     #10443E;
+    --m-textSecondary:   #32745C;
+    --m-border:          #62A29A;
+    --m-success:         #32745C;
+    --m-error:           #BF6382;
+    --m-gold:            #B29361;
+    --m-cream:           #EDE4D6;
+    --m-secondary:       #62A29A;
 }
 
+[data-theme="dark"] {
+    --m-background:      #0f1413;
+    --m-card:            #152420;
+    --m-primaryAccent:   #62A29A;
+    --m-secondaryAccent: #32745C;
+    --m-textPrimary:     #EDE4D6;
+    --m-textSecondary:   #B29361;
+    --m-border:          #10443E;
+    --m-success:         #62A29A;
+    --m-error:           #EF4444;
+    --m-gold:            #B29361;
+    --m-cream:           #EDE4D6;
+    --m-secondary:       #62A29A;
+}
+
+/* ═══════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════ */
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--m-background);
+    color: var(--m-textPrimary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Heading serif typography */
+h1, h2, h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+}
 
 /* RTL support */
-
 .rtl {
     direction: rtl;
 }
 
 .ltr {
     direction: ltr;
+}
+
+/* Theme transition for smooth toggling */
+*, *::before, *::after {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }

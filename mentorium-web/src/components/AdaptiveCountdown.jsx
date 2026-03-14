@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, TrendingUp, Zap, Target, Trophy, Flame, Star, Award, Lightbulb } from 'lucide-react';
+import { getTimeEstimate, completeLessonBackend } from '../backend';
 
 export default function AdaptiveCountdown({ 
   studentId, 
@@ -31,31 +32,20 @@ export default function AdaptiveCountdown({
   });
   const [showRewardAnimation, setShowRewardAnimation] = useState(false);
 
-  // Calculate rewards based on completion time
   const calculateRewards = useCallback((actualSeconds, estimatedSeconds) => {
-    const actualMinutes = actualSeconds / 60;
-    const estimatedMinutes = estimatedSeconds / 60;
-    
-    let points = 0;
+    let points = 100;
     let bonusPoints = 0;
     let microTip = null;
     
-    // Base points for completion
-    points = 100;
-    
-    // Time-based rewards
     if (actualSeconds <= estimatedSeconds) {
-      // Completed on time or early
       const timeBonus = Math.floor((estimatedSeconds - actualSeconds) / 60) * 10;
       bonusPoints += timeBonus;
       
       if (actualSeconds <= estimatedSeconds * 0.9) {
-        // Completed within 10% margin - extra bonus
         bonusPoints += 50;
         microTip = "Excellent timing! You're mastering this skill efficiently.";
       }
     } else {
-      // Over time - no bonus, provide tip
       const overTimeMinutes = Math.ceil((actualSeconds - estimatedSeconds) / 60);
       microTip = `To improve speed, try focusing on key concepts. You were ${overTimeMinutes} minute${overTimeMinutes > 1 ? 's' : ''} over target.`;
     }
@@ -63,7 +53,6 @@ export default function AdaptiveCountdown({
     return { points, bonusPoints, microTip };
   }, []);
 
-  // Complete lesson and calculate rewards
   const completeLesson = useCallback(async () => {
     if (!lessonStartTime || lessonCompleted) return;
     
@@ -76,105 +65,76 @@ export default function AdaptiveCountdown({
     );
     
     try {
-      // Send completion data to backend
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/lesson-complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          student_id: studentId,
-          skill_id: skillId,
-          subject_id: subjectId,
-          actual_time_seconds: actualTime / 1000,
-          estimated_time_seconds: estimatedTime / 1000,
-          points_earned: points,
-          bonus_points: bonusPoints
-        })
+      const result = await completeLessonBackend({
+        student_id: studentId,
+        skill_id: skillId,
+        subject_id: subjectId,
+        actual_time_seconds: actualTime / 1000,
+        estimated_time_seconds: estimatedTime / 1000,
+        points_earned: points,
+        bonus_points: bonusPoints,
       });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setRewardData({
-          points,
-          bonusPoints,
-          streak: result.streak || 0,
-          newBadges: result.new_badges || [],
-          microTip
+
+      setRewardData({
+        points,
+        bonusPoints,
+        streak: result.streak || 0,
+        newBadges: result.new_badges || [],
+        microTip,
+      });
+
+      setShowRewardAnimation(true);
+      setLessonCompleted(true);
+
+      if (onLessonComplete) {
+        onLessonComplete({
+          ...result,
+          actualTime: actualTime / 1000,
+          estimatedTime: estimatedTime / 1000,
         });
-        
-        // Show reward animation
-        setShowRewardAnimation(true);
-        setLessonCompleted(true);
-        
-        // Notify parent component
-        if (onLessonComplete) {
-          onLessonComplete({
-            ...result,
-            actualTime: actualTime / 1000,
-            estimatedTime: estimatedTime / 1000
-          });
-        }
       }
     } catch (error) {
       console.error('Failed to complete lesson:', error);
-      // Fallback - still show basic rewards
       setRewardData({ points, bonusPoints, streak: 0, newBadges: [], microTip });
       setShowRewardAnimation(true);
       setLessonCompleted(true);
     }
   }, [lessonStartTime, lessonCompleted, timeData.estimatedMinutes, studentId, skillId, subjectId, calculateRewards, onLessonComplete]);
+
   const fetchTimeEstimation = useCallback(async () => {
     if (!studentId || !skillId) return;
     
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/time-estimate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          student_id: studentId,
-          skill_id: skillId,
-          subject_id: subjectId
-        })
+      const data = await getTimeEstimate(studentId, skillId, subjectId);
+      setTimeData({
+        estimatedMinutes: data.estimated_minutes || 0,
+        traditionalHours: data.traditional_hours || 0,
+        confidence: data.confidence || 0,
+        masteryLevel: data.mastery_level || 0,
+        efficiency: data.efficiency || 1,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setTimeData({
-          estimatedMinutes: data.estimated_minutes || 0,
-          traditionalHours: data.traditional_hours || 0,
-          confidence: data.confidence || 0,
-          masteryLevel: data.mastery_level || 0,
-          efficiency: data.efficiency || 1
-        });
-        
-        // Notify parent component
-        if (onTimeEstimate) {
-          onTimeEstimate(data);
-        }
+      if (onTimeEstimate) {
+        onTimeEstimate(data);
       }
     } catch (error) {
       console.error('Failed to fetch time estimation:', error);
-      // Fallback estimation
       setTimeData({
         estimatedMinutes: 15,
         traditionalHours: 2,
         confidence: 0.5,
         masteryLevel: 0.5,
-        efficiency: 8
+        efficiency: 8,
       });
     } finally {
       setIsLoading(false);
     }
   }, [studentId, skillId, subjectId, onTimeEstimate]);
 
-  // Start countdown with lesson tracking
   const startCountdown = useCallback(() => {
     if (timeData.estimatedMinutes > 0) {
-      setCountdown(timeData.estimatedMinutes * 60); // Convert to seconds
+      setCountdown(timeData.estimatedMinutes * 60);
       setIsCountingDown(true);
       setLessonStartTime(Date.now());
       setLessonCompleted(false);
@@ -185,7 +145,6 @@ export default function AdaptiveCountdown({
   const stopCountdown = useCallback(() => {
     setIsCountingDown(false);
     setCountdown(null);
-    // Auto-complete lesson when stopping
     if (lessonStartTime && !lessonCompleted) {
       completeLesson();
     }
@@ -202,7 +161,6 @@ export default function AdaptiveCountdown({
         setCountdown(prev => {
           if (prev <= 1) {
             setIsCountingDown(false);
-            // Auto-complete lesson when time runs out
             if (lessonStartTime && !lessonCompleted) {
               setTimeout(() => completeLesson(), 100);
             }
@@ -225,13 +183,6 @@ export default function AdaptiveCountdown({
     return str.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
   };
 
-  const getEfficiencyColor = (efficiency) => {
-    if (efficiency >= 8) return 'text-green-600';
-    if (efficiency >= 5) return 'text-blue-600';
-    if (efficiency >= 3) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
   const getEfficiencyLabel = (efficiency) => {
     if (efficiency >= 8) return 'Exceptional';
     if (efficiency >= 5) return 'Advanced';
@@ -245,34 +196,34 @@ export default function AdaptiveCountdown({
     
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center animate-bounce">
+        <div className="rounded-xl p-6 max-w-sm w-full text-center animate-bounce" style={{ backgroundColor: 'var(--m-card)' }}>
           <div className="mb-4">
-            <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-2" />
-            <h2 className="text-2xl font-bold text-neutral-900 mb-2">Lesson Complete!</h2>
+            <Trophy className="w-16 h-16 mx-auto mb-2" style={{ color: 'var(--m-gold)' }} />
+            <h2 className="text-2xl font-bold font-serif mb-2" style={{ color: 'var(--m-textPrimary)' }}>Lesson Complete!</h2>
           </div>
           
           <div className="space-y-3 mb-4">
             <div className="flex items-center justify-center">
-              <Star className="w-5 h-5 text-yellow-500 mr-2" />
-              <span className="text-lg font-semibold">{rewardData.points} Points Earned</span>
+              <Star className="w-5 h-5 mr-2" style={{ color: 'var(--m-gold)' }} />
+              <span className="text-lg font-semibold" style={{ color: 'var(--m-textPrimary)' }}>{rewardData.points} Points Earned</span>
             </div>
             
             {rewardData.bonusPoints > 0 && (
-              <div className="flex items-center justify-center text-green-600">
+              <div className="flex items-center justify-center" style={{ color: 'var(--m-success)' }}>
                 <Zap className="w-5 h-5 mr-2" />
                 <span className="font-semibold">+{rewardData.bonusPoints} Bonus Points!</span>
               </div>
             )}
             
             {rewardData.streak > 0 && (
-              <div className="flex items-center justify-center text-orange-600">
+              <div className="flex items-center justify-center" style={{ color: 'var(--m-gold)' }}>
                 <Flame className="w-5 h-5 mr-2" />
                 <span className="font-semibold">{rewardData.streak} Day Streak!</span>
               </div>
             )}
             
             {rewardData.newBadges.length > 0 && (
-              <div className="flex items-center justify-center text-purple-600">
+              <div className="flex items-center justify-center" style={{ color: 'var(--m-primaryAccent)' }}>
                 <Award className="w-5 h-5 mr-2" />
                 <span className="font-semibold">New Badge: {rewardData.newBadges[0]}</span>
               </div>
@@ -280,17 +231,18 @@ export default function AdaptiveCountdown({
           </div>
           
           {rewardData.microTip && (
-            <div className="bg-blue-50 rounded-lg p-3 mb-4">
+            <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: 'var(--m-background)' }}>
               <div className="flex items-start">
-                <Lightbulb className="w-4 h-4 text-blue-600 mr-2 mt-1 flex-shrink-0" />
-                <p className="text-sm text-blue-800 text-left">{rewardData.microTip}</p>
+                <Lightbulb className="w-4 h-4 mr-2 mt-1 flex-shrink-0" style={{ color: 'var(--m-primaryAccent)' }} />
+                <p className="text-sm text-left" style={{ color: 'var(--m-textSecondary)' }}>{rewardData.microTip}</p>
               </div>
             </div>
           )}
           
           <button
             onClick={() => setShowRewardAnimation(false)}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-colors"
+            className="w-full px-4 py-2 rounded-lg font-medium transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--m-primaryAccent)', color: 'var(--m-cream)' }}
           >
             Continue Learning
           </button>
@@ -301,10 +253,10 @@ export default function AdaptiveCountdown({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg p-4 border border-neutral-200">
+      <div className="rounded-lg p-4 border" style={{ backgroundColor: 'var(--m-card)', borderColor: 'var(--m-border)' }}>
         <div className="animate-pulse">
-          <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
+          <div className="h-4 rounded w-3/4 mb-2" style={{ backgroundColor: 'var(--m-border)' }} />
+          <div className="h-3 rounded w-1/2" style={{ backgroundColor: 'var(--m-border)' }} />
         </div>
       </div>
     );
@@ -313,112 +265,115 @@ export default function AdaptiveCountdown({
   return (
     <>
       <RewardAnimation />
-      <div className={`bg-white rounded-lg p-4 border border-neutral-200 ${isRTL ? 'rtl' : 'ltr'}`}>
+      <div className={`rounded-lg p-4 border ${isRTL ? 'rtl' : 'ltr'}`} style={{ backgroundColor: 'var(--m-card)', borderColor: 'var(--m-border)' }}>
         {/* Header */}
         <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <Clock className="w-5 h-5 text-neutral-600 mr-2" />
-            <h3 className="font-semibold text-neutral-900">Adaptive Timer</h3>
+            <Clock className="w-5 h-5 mr-2" style={{ color: 'var(--m-textSecondary)' }} />
+            <h3 className="font-semibold font-serif" style={{ color: 'var(--m-textPrimary)' }}>Adaptive Timer</h3>
           </div>
           <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <Zap className={`w-4 h-4 mr-1 ${getEfficiencyColor(timeData.efficiency)}`} />
-            <span className={`text-sm font-medium ${getEfficiencyColor(timeData.efficiency)}`}>
+            <Zap className="w-4 h-4 mr-1" style={{ color: 'var(--m-success)' }} />
+            <span className="text-sm font-medium" style={{ color: 'var(--m-success)' }}>
               {getEfficiencyLabel(timeData.efficiency)}
             </span>
           </div>
         </div>
 
-      {/* Time Comparison */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="text-center p-3 bg-blue-50 rounded-lg">
-          <div className="text-2xl font-bold text-blue-600">
-            {language === 'ar' ? formatArabicNumbers(timeData.estimatedMinutes.toString()) : timeData.estimatedMinutes}
-            <span className="text-sm font-normal">min</span>
-          </div>
-          <div className="text-xs text-blue-700 mt-1">Mentorium Time</div>
-        </div>
-        <div className="text-center p-3 bg-neutral-50 rounded-lg">
-          <div className="text-2xl font-bold text-neutral-600">
-            {language === 'ar' ? formatArabicNumbers(timeData.traditionalHours.toString()) : timeData.traditionalHours}
-            <span className="text-sm font-normal">hr</span>
-          </div>
-          <div className="text-xs text-neutral-600 mt-1">Traditional Time</div>
-        </div>
-      </div>
-
-      {/* Efficiency Metrics */}
-      <div className="space-y-2 mb-4">
-        <div className={`flex items-center justify-between text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <span className="text-neutral-600">Efficiency</span>
-          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <div className="w-20 h-2 bg-neutral-200 rounded-full mr-2">
-              <div 
-                className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
-                style={{ width: `${Math.min((timeData.efficiency / 10) * 100, 100)}%` }}
-              ></div>
+        {/* Time Comparison */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="text-center p-3 rounded-lg" style={{ backgroundColor: 'var(--m-primaryAccent)' }}>
+            <div className="text-2xl font-bold" style={{ color: 'var(--m-cream)' }}>
+              {language === 'ar' ? formatArabicNumbers(timeData.estimatedMinutes.toString()) : timeData.estimatedMinutes}
+              <span className="text-sm font-normal"> min</span>
             </div>
-            <span className="font-medium text-neutral-900">{timeData.efficiency.toFixed(1)}x</span>
+            <div className="text-xs mt-1" style={{ color: 'var(--m-cream)', opacity: 0.8 }}>Mentorium Time</div>
           </div>
-        </div>
-        
-        <div className={`flex items-center justify-between text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <span className="text-neutral-600">Mastery</span>
-          <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <div className="w-20 h-2 bg-neutral-200 rounded-full mr-2">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
-                style={{ width: `${timeData.masteryLevel * 100}%` }}
-              ></div>
+          <div className="text-center p-3 rounded-lg" style={{ backgroundColor: 'var(--m-background)' }}>
+            <div className="text-2xl font-bold" style={{ color: 'var(--m-textSecondary)' }}>
+              {language === 'ar' ? formatArabicNumbers(timeData.traditionalHours.toString()) : timeData.traditionalHours}
+              <span className="text-sm font-normal"> hr</span>
             </div>
-            <span className="font-medium text-neutral-900">{(timeData.masteryLevel * 100).toFixed(0)}%</span>
+            <div className="text-xs mt-1" style={{ color: 'var(--m-textSecondary)' }}>Traditional Time</div>
           </div>
         </div>
-      </div>
 
-      {/* Countdown Timer */}
-      {countdown !== null && (
-        <div className="text-center p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg mb-4">
-          <div className="text-3xl font-bold text-purple-600 mb-2">
-            {language === 'ar' ? formatArabicNumbers(formatTime(countdown)) : formatTime(countdown)}
+        {/* Efficiency Metrics */}
+        <div className="space-y-2 mb-4">
+          <div className={`flex items-center justify-between text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <span style={{ color: 'var(--m-textSecondary)' }}>Efficiency</span>
+            <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <div className="w-20 h-2 rounded-full mr-2" style={{ backgroundColor: 'var(--m-border)' }}>
+                <div 
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.min((timeData.efficiency / 10) * 100, 100)}%`, backgroundColor: 'var(--m-success)' }}
+                />
+              </div>
+              <span className="font-medium" style={{ color: 'var(--m-textPrimary)' }}>{timeData.efficiency.toFixed(1)}x</span>
+            </div>
           </div>
-          <div className="text-sm text-purple-700">
-            {isCountingDown ? 'Time Remaining' : countdown === 0 ? 'Time\'s Up!' : 'Ready to Start'}
+          
+          <div className={`flex items-center justify-between text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <span style={{ color: 'var(--m-textSecondary)' }}>Mastery</span>
+            <div className={`flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <div className="w-20 h-2 rounded-full mr-2" style={{ backgroundColor: 'var(--m-border)' }}>
+                <div 
+                  className="h-full rounded-full"
+                  style={{ width: `${timeData.masteryLevel * 100}%`, backgroundColor: 'var(--m-primaryAccent)' }}
+                />
+              </div>
+              <span className="font-medium" style={{ color: 'var(--m-textPrimary)' }}>{(timeData.masteryLevel * 100).toFixed(0)}%</span>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-        {!isCountingDown ? (
-          <button
-            onClick={startCountdown}
-            className={`flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-colors flex items-center justify-center ${isRTL ? 'flex-row-reverse' : ''}`}
-          >
-            <Target className="w-4 h-4 mr-2" />
-            Start Learning
-          </button>
-        ) : (
-          <button
-            onClick={stopCountdown}
-            className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"
-          >
-            Stop Timer
-          </button>
+        {/* Countdown Timer */}
+        {countdown !== null && (
+          <div className="text-center p-4 rounded-lg mb-4" style={{ backgroundColor: 'var(--m-background)' }}>
+            <div className="text-3xl font-bold mb-2" style={{ color: 'var(--m-primaryAccent)' }}>
+              {language === 'ar' ? formatArabicNumbers(formatTime(countdown)) : formatTime(countdown)}
+            </div>
+            <div className="text-sm" style={{ color: 'var(--m-textSecondary)' }}>
+              {isCountingDown ? 'Time Remaining' : countdown === 0 ? "Time's Up!" : 'Ready to Start'}
+            </div>
+          </div>
         )}
-        
-        <button
-          onClick={fetchTimeEstimation}
-          className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg font-medium hover:bg-neutral-50 transition-colors"
-        >
-          Refresh
-        </button>
-      </div>
 
-      {/* Confidence Indicator */}
-      <div className={`mt-3 text-xs text-neutral-500 ${isRTL ? 'text-right' : 'text-left'}`}>
-        Confidence: {(timeData.confidence * 100).toFixed(0)}% • Based on your learning patterns
+        {/* Action Buttons */}
+        <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          {!isCountingDown ? (
+            <button
+              onClick={startCountdown}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-opacity hover:opacity-90 flex items-center justify-center ${isRTL ? 'flex-row-reverse' : ''}`}
+              style={{ backgroundColor: 'var(--m-primaryAccent)', color: 'var(--m-cream)' }}
+            >
+              <Target className="w-4 h-4 mr-2" />
+              Start Learning
+            </button>
+          ) : (
+            <button
+              onClick={stopCountdown}
+              className="flex-1 px-4 py-2 rounded-lg font-medium transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--m-error)', color: 'var(--m-cream)' }}
+            >
+              Stop Timer
+            </button>
+          )}
+          
+          <button
+            onClick={fetchTimeEstimation}
+            className="px-4 py-2 border rounded-lg font-medium transition-opacity hover:opacity-80"
+            style={{ borderColor: 'var(--m-border)', color: 'var(--m-textSecondary)' }}
+          >
+            Refresh
+          </button>
+        </div>
+
+        {/* Confidence Indicator */}
+        <div className={`mt-3 text-xs ${isRTL ? 'text-right' : 'text-left'}`} style={{ color: 'var(--m-textSecondary)' }}>
+          Confidence: {(timeData.confidence * 100).toFixed(0)}% • Based on your learning patterns
+        </div>
       </div>
-    </div>
     </>
   );
 }

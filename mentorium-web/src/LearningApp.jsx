@@ -9,9 +9,14 @@ import Seal from './components/Seal';
 export default function LearningAppHome() {
   const [activeTab, setActiveTab] = useState('forum');
   const [language, setLanguage] = useState('en');
+  const [theme, setTheme] = useState('dark');
   
   const isRTL = language === 'ar';
   const text = useTranslations(language);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   const renderActiveTab = () => {
     switch(activeTab) {
@@ -22,14 +27,18 @@ export default function LearningAppHome() {
       case 'trials': 
         return <Trials text={text} isRTL={isRTL} language={language} />;
       case 'seal': 
-        return <Seal text={text} isRTL={isRTL} language={language} setLanguage={setLanguage} />;
+        return <Seal text={text} isRTL={isRTL} language={language} setLanguage={setLanguage} theme={theme} toggleTheme={toggleTheme} />;
       default: 
         return <Forum text={text} isRTL={isRTL} language={language} />;
     }
   };
 
   return (
-    <div className={`flex flex-col h-screen bg-neutral-50 max-w-md mx-auto ${isRTL ? 'rtl' : 'ltr'} font-sans`}>
+    <div 
+      data-theme={theme}
+      className={`flex flex-col h-screen max-w-md mx-auto ${isRTL ? 'rtl' : 'ltr'} font-sans`}
+      style={{ backgroundColor: 'var(--m-background)', color: 'var(--m-textPrimary)' }}
+    >
       {/* Main Content Area */}
       {renderActiveTab()}
       
